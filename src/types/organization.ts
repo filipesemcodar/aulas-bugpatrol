@@ -8,6 +8,7 @@ export interface Organization {
   plan: OrganizationPlan;
   subscription_status: string | null;
   current_period_end: string | null;
+  trial_ends_at?: string | null;
   created_at: string;
   updated_at: string;
 }

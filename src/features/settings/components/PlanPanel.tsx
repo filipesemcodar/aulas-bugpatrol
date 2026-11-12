@@ -87,6 +87,12 @@ export function PlanPanel() {
           </p>
         )}
 
+        {isFree && (
+          <p className="text-sm text-muted-foreground">
+            Teste grátis até {formatDate(organization.trial_ends_at!.slice(0, 10))}
+          </p>
+        )}
+
         {isFree && canManageBilling && (
           <div className="flex flex-col gap-2">
             <p className="text-sm text-muted-foreground">
