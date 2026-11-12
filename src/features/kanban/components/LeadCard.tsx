@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { TimeAgo } from "@/components/common/TimeAgo";
 import { LeadFormDialog } from "@/features/leads/components/LeadFormDialog";
 import { useCrmStore } from "@/stores/useCrmStore";
-import { getInitials } from "@/lib/formatters";
+import { getInitials, nomeCurto } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import type { Lead } from "@/types";
 
@@ -29,7 +29,7 @@ export function LeadCardContent({ lead, className }: { lead: Lead; className?: s
           <AvatarFallback className="text-xs">{getInitials(lead.name)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{lead.name}</p>
+          <p className="truncate text-sm font-medium" title={lead.name}>{nomeCurto(lead.name)}</p>
           <p className="truncate text-xs text-muted-foreground">{lead.phone}</p>
         </div>
       </div>
