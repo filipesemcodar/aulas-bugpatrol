@@ -1,4 +1,4 @@
-import { Users, UserPlus, TrendingUp, MessageSquareText } from "lucide-react";
+import { Users, UserPlus, TrendingUp, MessageSquareText, Clock } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/features/dashboard/components/StatCard";
 import { LeadsByColumnChart } from "@/features/dashboard/components/LeadsByColumnChart";
@@ -24,7 +24,7 @@ export function DashboardPage() {
     <div className="flex h-full flex-col">
       <PageHeader title="Dashboard" description="Visão geral do seu funil de leads" />
       <div className="flex flex-col gap-4 p-4 sm:p-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             label="Total de leads"
             value={String(metrics.totalLeads)}
@@ -52,6 +52,12 @@ export function DashboardPage() {
             icon={MessageSquareText}
             tone="warning"
             trend={metrics.automatedMessagesTrend}
+          />
+          <StatCard
+            label="Tempo médio sem resposta"
+            value={`${Math.round(metrics.averageHoursWithoutReply)} h`}
+            icon={Clock}
+            tone="violet"
           />
         </div>
 

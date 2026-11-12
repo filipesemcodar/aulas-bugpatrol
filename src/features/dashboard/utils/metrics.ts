@@ -58,6 +58,8 @@ export interface DashboardMetrics {
   conversionRateTrend?: Trend;
   automatedMessagesSent: number;
   automatedMessagesTrend?: Trend;
+  /** Horas, em média, desde a última mensagem de cada lead. */
+  averageHoursWithoutReply: number;
 }
 
 export function computeDashboardMetrics(
@@ -100,7 +102,16 @@ export function computeDashboardMetrics(
     return t >= previousWeekStart.getTime() && t < weekStart.getTime();
   }).length;
 
+  const hoursWithoutReply = leads.map(
+    (lead) => (now.getTime() - new Date(lead.last_message_at!.slice(0, 19)).getTime()) / (60 * 60 * 1000)
+  );
+  const averageHoursWithoutReply =
+    hoursWithoutReply.length > 0
+      ? hoursWithoutReply.reduce((sum, h) => sum + h, 0) / hoursWithoutReply.length
+      : 0;
+
   return {
+    averageHoursWithoutReply,
     totalLeads: leads.length,
     totalLeadsTrend: computeTrend(leadsThisWeek.length, leadsPreviousWeek.length),
     newLeadsToday,

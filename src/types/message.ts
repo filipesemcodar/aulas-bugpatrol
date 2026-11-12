@@ -9,5 +9,6 @@ export interface Message {
   status: MessageStatus;
   content: string;
   is_automated: boolean;
+  channel?: "whatsapp" | "manual";
   created_at: string;
 }

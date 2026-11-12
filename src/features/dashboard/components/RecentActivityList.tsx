@@ -4,6 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { TimeAgo } from "@/components/common/TimeAgo";
 import type { Lead, Message } from "@/types";
 
+const CANAL: Record<string, { nome: string }> = {
+  whatsapp: { nome: "WhatsApp" },
+  manual: { nome: "Manual" },
+};
+
 interface RecentActivityListProps {
   messages: Message[];
   leads: Lead[];
@@ -41,6 +46,7 @@ export function RecentActivityList({ messages, leads }: RecentActivityListProps)
                 <span className="text-xs text-muted-foreground">
                   <TimeAgo date={message.created_at} />
                 </span>
+                <span className="text-[10px] text-muted-foreground">{CANAL[message.channel!].nome}</span>
                 {message.is_automated && (
                   <Badge variant="secondary" className="text-[10px]">
                     Automática
