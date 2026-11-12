@@ -1,0 +1,23 @@
+name: Checagens
+
+# Roda em todo PR e em todo push na main: lint, tipos e testes.
+# É o que precisa passar antes de qualquer mudança entrar.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checagens:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check

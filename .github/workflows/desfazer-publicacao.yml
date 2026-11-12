@@ -1,0 +1,55 @@
+name: Desfazer publicação
+
+# Volta a produção para uma versão que já esteve no ar. Disparado por `npm run desfazer -- <commit>`.
+# Sempre com a versão explícita: rollback sem versão pode alternar de volta para a versão ruim.
+# Não desfaz mudança no banco.
+on:
+  workflow_dispatch:
+    inputs:
+      versao:
+        description: "Commit completo da versão para a qual voltar (a que estava no ar antes)"
+        required: true
+
+concurrency:
+  group: producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  desfazer:
+    runs-on: ubuntu-latest
+    environment: producao
+    env:
+      PRODUCAO_URL: ${{ vars.PRODUCAO_URL }}
+      VERSAO: ${{ inputs.versao }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Achar a versão do Cloudflare marcada com esse commit
+        id: achar
+        run: |
+          npx wrangler versions list --json > versoes.json
+          ID=$(node -e '
+            const v = JSON.parse(require("fs").readFileSync("versoes.json","utf8"));
+            const lista = Array.isArray(v) ? v : (v.versions ?? []);
+            const alvo = lista.find(x => (x.annotations?.["workers/tag"] ?? "") === process.env.VERSAO);
+            if (!alvo) { console.error("Nenhuma das últimas versões do Cloudflare tem a tag " + process.env.VERSAO); process.exit(1); }
+            console.log(alvo.id);
+          ')
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+      - name: Voltar para essa versão
+        run: npx wrangler rollback "${{ steps.achar.outputs.id }}" --message "desfazer para ${VERSAO::7}" --yes
+      - name: Conferir a versão no ar
+        run: node scripts/versao-no-ar.mjs --esperar "$VERSAO"
+      - name: Resumo
+        run: echo "Produção voltou para ${VERSAO::7}" >> "$GITHUB_STEP_SUMMARY"

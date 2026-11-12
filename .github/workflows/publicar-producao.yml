@@ -1,0 +1,70 @@
+name: Publicar produção
+
+# O único caminho para produção. Disparado por `npm run publicar` (ou pelo botão Run workflow).
+# Recebe o commit exato a publicar, que precisa estar na main. Esse commit é a versão em tudo:
+# version.json, release do Sentry e tag da versão no Cloudflare.
+# Ordem: checagens completas → build com a versão embutida → publica no Cloudflare com a versão marcada
+# → confere pelo conteúdo servido (version.json) que a versão no ar é a que acabou de subir.
+on:
+  workflow_dispatch:
+    inputs:
+      versao:
+        description: "Commit completo da main a publicar (o npm run publicar preenche sozinho)"
+        required: true
+
+concurrency:
+  group: producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    environment: producao
+    env:
+      PRODUCAO_URL: ${{ vars.PRODUCAO_URL }}
+      VERSAO: ${{ inputs.versao }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.versao }}
+          fetch-depth: 0
+      - name: Conferir que a versão é um commit da main
+        run: |
+          [ "$(git rev-parse HEAD)" = "$VERSAO" ] || { echo "::error::checkout ($(git rev-parse HEAD)) diferente da versão pedida ($VERSAO)"; exit 1; }
+          git merge-base --is-ancestor "$VERSAO" origin/main || { echo "::error::$VERSAO não está na main"; exit 1; }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Checagens completas
+        run: npm run check
+      - name: Conferir o token dos mapas de código
+        # Sem ele o Sentry recebe o erro minificado e a patrulha não acha a linha. Não publica assim.
+        run: |
+          if grep -q '"@sentry/vite-plugin"' package.json && [ -z "$SENTRY_AUTH_TOKEN" ]; then
+            echo "::error::SENTRY_AUTH_TOKEN ausente: os mapas de código não iriam para o Sentry."; exit 1
+          fi
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      - name: Build com a versão embutida
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      - name: Publicar no Cloudflare com a versão marcada
+        run: npx wrangler deploy --tag "$VERSAO" --message "publicar ${VERSAO::7}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Conferir a versão no ar
+        run: node scripts/versao-no-ar.mjs --esperar "$VERSAO"
+      - name: Resumo
+        run: echo "Publicado ${VERSAO::7} em $PRODUCAO_URL" >> "$GITHUB_STEP_SUMMARY"
